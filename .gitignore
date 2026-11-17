@@ -289,3 +289,5 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+### Proyecto ###
+test_musica.db
