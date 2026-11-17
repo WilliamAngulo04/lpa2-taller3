@@ -4,10 +4,10 @@
 
 ## Datos del Estudiante
 
-| Campo       | Valor                          |
-|-------------|--------------------------------|
-| Nombre      | _(tu nombre completo)_         |
-| Código      | _(tu código estudiantil)_      |
+| Campo       | Valor                            |
+|-------------|----------------------------------|
+| Nombre      | William Q. Angulo A.             |
+| Código      | _(tu código estudiantil)_        |
 | Usuario Git | [WilliamAngulo04](https://github.com/WilliamAngulo04) |
 | Curso       | Lenguajes de Programación Avanzada 2 (LPA2) |
 
@@ -41,6 +41,7 @@ lpa2-taller3
 │   ├── models.py             # Modelos SQLModel y esquemas con validación
 │   ├── paginacion.py         # Mejora: paginación de listados
 │   ├── logging_config.py     # Mejora: sistema de registro (logging)
+│   ├── seguridad.py          # Mejora: OAuth2 + JWT (bcrypt, token, usuario actual)
 │   └── routers               # Endpoints: usuarios, canciones, favoritos
 ├── pyproject.toml            # Configuración de pytest y ruff
 ├── requirements.txt          # Dependencias del proyecto
@@ -89,8 +90,10 @@ lpa2-taller3
    ```bash
    python -m venv venv
    source venv/bin/activate      # Linux / macOS
-   venv\Scripts\activate         # Windows
+   .\venv\Scripts\activate       # Windows (PowerShell)
    ```
+
+   En PowerShell la ruta debe empezar con `.\`; si la activación está bloqueada, se puede usar el Python del entorno sin activarlo: `.\venv\Scripts\python.exe -m uvicorn main:app --reload`.
 
 3. Instala las dependencias:
 
@@ -128,12 +131,25 @@ ruff format .                # formatter
 pre-commit run --all-files   # todos los hooks
 ```
 
+Son 67 pruebas (usuarios, canciones, favoritos, integración, validación, paginación, logging y autenticación). Las pruebas que no son de autenticación simulan un usuario autenticado con `dependency_overrides`.
+
 En cada `push` y `pull request` a `main`, GitHub Actions ejecuta ruff y pytest.
 
 ## Uso de la API
 
 > Los listados (`GET` de colecciones y búsqueda) son **paginados**: aceptan
 > `?pagina=1&tamaño=10` y responden con `total`, `pagina`, `tamaño`, `paginas` e `items`.
+>
+> Los `GET` son públicos. Los `POST`, `PUT` y `DELETE` exigen el encabezado
+> `Authorization: Bearer <token>` (si falta o es inválido responden `401`).
+
+### Autenticación
+
+- **Registrarse**: `POST /api/auth/registro` con `{"nombre", "correo", "password"}`
+- **Iniciar sesión (OAuth2)**: `POST /api/auth/token` (formulario con `username` = correo y `password`) → `{"access_token", "token_type": "bearer"}`
+- **Usuario autenticado**: `GET /api/auth/me`
+
+En Swagger UI (`/docs`) el botón **Authorize** usa este mismo flujo.
 
 ### Usuarios
 
@@ -195,6 +211,16 @@ En cada `push` y `pull request` a `main`, GitHub Actions ejecuta ruff y pytest.
 - Manejadores de errores que registran la traza completa sin exponerla al cliente.
 - Eventos de negocio (creación/eliminación de usuarios, canciones y favoritos).
 - Configurable con `LOG_LEVEL` y `LOG_FILE`.
+
+### 3. Autenticación con OAuth2 + JWT (sugerencia 1)
+
+Agregada para el login y registro del frontend del [lpa2-taller4](https://github.com/WilliamAngulo04/lpa2-taller4).
+
+- Módulo [`musica_api/seguridad.py`](musica_api/seguridad.py): flujo de contraseña de OAuth2 (`OAuth2PasswordBearer`), contraseñas cifradas con bcrypt y tokens JWT firmados con `SECRET_KEY` (`ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`).
+- Router [`musica_api/routers/auth.py`](musica_api/routers/auth.py) con registro, token y perfil.
+- La dependencia `get_usuario_actual` protege todos los endpoints de escritura; las lecturas siguen públicas.
+- Columna nueva `usuario.password_hash`, agregada automáticamente a bases existentes al iniciar. Los usuarios cargados con DBeaver no tienen contraseña y no pueden iniciar sesión; se crean cuentas nuevas con el registro.
+- 11 pruebas nuevas en `tests/test_api.py` (`TestAutenticacion`).
 
 ## Sugerencias de Mejora
 

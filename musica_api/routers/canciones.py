@@ -13,9 +13,13 @@ from musica_api.models import (
     Favorito,
 )
 from musica_api.paginacion import Pagina, ParametrosPaginacion, paginar
+from musica_api.seguridad import get_usuario_actual
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+# Los endpoints de escritura exigen un token OAuth2 válido
+PROTEGIDO = [Depends(get_usuario_actual)]
 
 
 def obtener_cancion_o_404(session: Session, id_cancion: int) -> Cancion:
@@ -54,7 +58,12 @@ def buscar_canciones(
     return paginar(session, consulta, params)
 
 
-@router.post("", response_model=CancionRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=CancionRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=PROTEGIDO,
+)
 def crear_cancion(datos: CancionCreate, session: Session = Depends(get_session)):
     """Crea una canción."""
     cancion = Cancion.model_validate(datos)
@@ -71,7 +80,7 @@ def obtener_cancion(id_cancion: int, session: Session = Depends(get_session)):
     return obtener_cancion_o_404(session, id_cancion)
 
 
-@router.put("/{id_cancion}", response_model=CancionRead)
+@router.put("/{id_cancion}", response_model=CancionRead, dependencies=PROTEGIDO)
 def actualizar_cancion(
     id_cancion: int, datos: CancionUpdate, session: Session = Depends(get_session)
 ):
@@ -84,7 +93,9 @@ def actualizar_cancion(
     return cancion
 
 
-@router.delete("/{id_cancion}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{id_cancion}", status_code=status.HTTP_204_NO_CONTENT, dependencies=PROTEGIDO
+)
 def eliminar_cancion(id_cancion: int, session: Session = Depends(get_session)):
     """Elimina una canción y los favoritos que la referencian."""
     cancion = obtener_cancion_o_404(session, id_cancion)

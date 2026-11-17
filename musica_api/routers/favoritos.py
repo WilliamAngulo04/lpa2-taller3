@@ -8,9 +8,13 @@ from musica_api.database import get_session
 from musica_api.logging_config import get_logger
 from musica_api.models import Cancion, Favorito, FavoritoCreate, FavoritoRead, Usuario
 from musica_api.paginacion import Pagina, ParametrosPaginacion, paginar
+from musica_api.seguridad import get_usuario_actual
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+# Los endpoints de escritura exigen un token OAuth2 válido
+PROTEGIDO = [Depends(get_usuario_actual)]
 
 
 @router.get("", response_model=Pagina[FavoritoRead])
@@ -22,7 +26,12 @@ def listar_favoritos(
     return paginar(session, select(Favorito).order_by(Favorito.id), params)
 
 
-@router.post("", response_model=FavoritoRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=FavoritoRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=PROTEGIDO,
+)
 def crear_favorito(datos: FavoritoCreate, session: Session = Depends(get_session)):
     """Marca una canción como favorita de un usuario."""
     if not session.get(Usuario, datos.id_usuario):
@@ -52,7 +61,9 @@ def obtener_favorito(id_favorito: int, session: Session = Depends(get_session)):
     return favorito
 
 
-@router.delete("/{id_favorito}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{id_favorito}", status_code=status.HTTP_204_NO_CONTENT, dependencies=PROTEGIDO
+)
 def eliminar_favorito(id_favorito: int, session: Session = Depends(get_session)):
     """Elimina un favorito."""
     favorito = session.get(Favorito, id_favorito)

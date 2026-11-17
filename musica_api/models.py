@@ -50,10 +50,22 @@ class UsuarioBase(SQLModel):
 class Usuario(UsuarioBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fecha_registro: datetime = Field(default_factory=ahora)
+    # Hash bcrypt; None para usuarios creados sin contraseña (no pueden iniciar sesión)
+    password_hash: str | None = Field(default=None, max_length=100)
 
 
 class UsuarioCreate(UsuarioBase):
     pass
+
+
+class UsuarioRegistro(UsuarioBase):
+    # bcrypt solo usa los primeros 72 bytes
+    password: str = Field(min_length=8, max_length=72)
+
+
+class Token(SQLModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 class UsuarioUpdate(SQLModel):

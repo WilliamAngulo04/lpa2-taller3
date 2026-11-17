@@ -5,6 +5,7 @@ Define el engine de SQLModel, la creación de tablas y la dependencia de sesión
 
 from collections.abc import Generator
 
+from sqlalchemy import inspect
 from sqlmodel import Session, SQLModel, create_engine, text
 
 from musica_api.config import settings
@@ -23,6 +24,20 @@ def create_db_and_tables() -> None:
     from musica_api import models  # noqa: F401
 
     SQLModel.metadata.create_all(engine)
+    agregar_columnas_faltantes()
+
+
+def agregar_columnas_faltantes() -> None:
+    """
+    create_all no modifica tablas existentes: agrega la columna password_hash
+    a bases creadas antes de la autenticación (p. ej. musica.db).
+    """
+    columnas = {c["name"] for c in inspect(engine).get_columns("usuario")}
+    if "password_hash" not in columnas:
+        with engine.begin() as conn:
+            conn.execute(
+                text("ALTER TABLE usuario ADD COLUMN password_hash VARCHAR(100)")
+            )
 
 
 def get_session() -> Generator[Session, None, None]:

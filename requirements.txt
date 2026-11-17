@@ -12,6 +12,10 @@ sqlalchemy
 python-multipart
 python-dotenv
 
+# Autenticación (OAuth2 + JWT)
+pyjwt
+bcrypt
+
 # Testing
 pytest
 pytest-asyncio

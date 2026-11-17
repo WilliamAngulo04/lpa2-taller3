@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from musica_api.config import settings
 from musica_api.database import check_db_connection, create_db_and_tables
 from musica_api.logging_config import get_logger, setup_logging
-from musica_api.routers import canciones, favoritos, usuarios
+from musica_api.routers import auth, canciones, favoritos, usuarios
 
 INICIO = time.time()
 
@@ -71,6 +71,7 @@ app.add_middleware(
 
 
 # Incluir los routers de usuarios, canciones y favoritos
+app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
 app.include_router(usuarios.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(canciones.router, prefix="/api/canciones", tags=["Canciones"])
 app.include_router(favoritos.router, prefix="/api/favoritos", tags=["Favoritos"])

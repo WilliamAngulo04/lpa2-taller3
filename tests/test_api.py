@@ -7,12 +7,13 @@ import logging
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
 
 from main import app
 from musica_api.database import get_session
 from musica_api.models import Cancion, Favorito, Usuario
+from musica_api.seguridad import get_usuario_actual
 
 # =============================================================================
 # CONFIGURACIÓN DE FIXTURES
@@ -53,6 +54,19 @@ def client_fixture(session: Session):
         return session
 
     app.dependency_overrides[get_session] = get_session_override
+    # Los endpoints de escritura exigen token: se simula un usuario autenticado
+    app.dependency_overrides[get_usuario_actual] = lambda: Usuario(
+        id=0, nombre="Autenticado", correo="auth@example.com"
+    )
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
+
+
+# Fixture para cliente sin autenticación simulada (pruebas de OAuth2)
+@pytest.fixture(name="client_auth")
+def client_auth_fixture(session: Session):
+    app.dependency_overrides[get_session] = lambda: session
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()
@@ -563,3 +577,110 @@ class TestLogging:
     def test_registra_eventos(self, client: TestClient, caplog):
         client.post("/api/usuarios", json={"nombre": "Log", "correo": "log@x.com"})
         assert any("Usuario creado" in r.message for r in caplog.records)
+
+
+# =============================================================================
+# TESTS DE AUTENTICACIÓN (OAuth2 + JWT)
+# =============================================================================
+
+
+class TestAutenticacion:
+    """Registro, inicio de sesión y protección de endpoints de escritura."""
+
+    REGISTRO = {"nombre": "Ana", "correo": "Ana@Mail.com", "password": "secreta123"}
+
+    def iniciar_sesion(self, client: TestClient, password: str = "secreta123"):
+        return client.post(
+            "/api/auth/token", data={"username": "ana@mail.com", "password": password}
+        )
+
+    def test_registro(self, client_auth: TestClient):
+        response = client_auth.post("/api/auth/registro", json=self.REGISTRO)
+        assert response.status_code == 201
+        data = response.json()
+        assert data["correo"] == "ana@mail.com"
+        assert "password" not in data and "password_hash" not in data
+
+    def test_registro_correo_duplicado(self, client_auth: TestClient):
+        client_auth.post("/api/auth/registro", json=self.REGISTRO)
+        response = client_auth.post("/api/auth/registro", json=self.REGISTRO)
+        assert response.status_code == 409
+
+    def test_registro_password_corta(self, client_auth: TestClient):
+        datos = {**self.REGISTRO, "password": "corta"}
+        response = client_auth.post("/api/auth/registro", json=datos)
+        assert response.status_code == 422
+
+    def test_password_se_guarda_cifrada(self, client_auth: TestClient, session):
+        client_auth.post("/api/auth/registro", json=self.REGISTRO)
+        usuario = session.exec(
+            select(Usuario).where(Usuario.correo == "ana@mail.com")
+        ).one()
+        assert usuario.password_hash.startswith("$2")
+        assert "secreta123" not in usuario.password_hash
+
+    def test_login_y_perfil(self, client_auth: TestClient):
+        client_auth.post("/api/auth/registro", json=self.REGISTRO)
+        response = self.iniciar_sesion(client_auth)
+        assert response.status_code == 200
+        token = response.json()
+        assert token["token_type"] == "bearer"
+        perfil = client_auth.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {token['access_token']}"},
+        )
+        assert perfil.status_code == 200
+        assert perfil.json()["correo"] == "ana@mail.com"
+
+    def test_login_password_incorrecta(self, client_auth: TestClient):
+        client_auth.post("/api/auth/registro", json=self.REGISTRO)
+        response = self.iniciar_sesion(client_auth, password="otra-clave")
+        assert response.status_code == 401
+
+    def test_login_usuario_sin_password(
+        self, client_auth: TestClient, usuario_test: Usuario
+    ):
+        """Los usuarios cargados sin contraseña (DBeaver) no pueden iniciar sesión."""
+        response = client_auth.post(
+            "/api/auth/token",
+            data={"username": usuario_test.correo, "password": "cualquiera"},
+        )
+        assert response.status_code == 401
+
+    def test_perfil_token_invalido(self, client_auth: TestClient):
+        response = client_auth.get(
+            "/api/auth/me", headers={"Authorization": "Bearer no-es-un-jwt"}
+        )
+        assert response.status_code == 401
+
+    def test_escritura_sin_token(self, client_auth: TestClient):
+        response = client_auth.post(
+            "/api/canciones",
+            json={
+                "titulo": "X",
+                "artista": "Y",
+                "duracion": 100,
+                "año": 2020,
+                "genero": "Pop",
+            },
+        )
+        assert response.status_code == 401
+
+    def test_lectura_publica(self, client_auth: TestClient):
+        assert client_auth.get("/api/canciones").status_code == 200
+
+    def test_escritura_con_token(self, client_auth: TestClient):
+        client_auth.post("/api/auth/registro", json=self.REGISTRO)
+        token = self.iniciar_sesion(client_auth).json()["access_token"]
+        response = client_auth.post(
+            "/api/canciones",
+            json={
+                "titulo": "X",
+                "artista": "Y",
+                "duracion": 100,
+                "año": 2020,
+                "genero": "Pop",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 201

@@ -16,9 +16,13 @@ from musica_api.models import (
     UsuarioUpdate,
 )
 from musica_api.paginacion import Pagina, ParametrosPaginacion, paginar
+from musica_api.seguridad import get_usuario_actual
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+# Los endpoints de escritura exigen un token OAuth2 válido
+PROTEGIDO = [Depends(get_usuario_actual)]
 
 
 def obtener_usuario_o_404(session: Session, id_usuario: int) -> Usuario:
@@ -46,7 +50,12 @@ def listar_usuarios(
     return paginar(session, select(Usuario).order_by(Usuario.id), params)
 
 
-@router.post("", response_model=UsuarioRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=UsuarioRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=PROTEGIDO,
+)
 def crear_usuario(datos: UsuarioCreate, session: Session = Depends(get_session)):
     """Crea un usuario. El correo debe ser único."""
     verificar_correo_disponible(session, datos.correo)
@@ -64,7 +73,7 @@ def obtener_usuario(id_usuario: int, session: Session = Depends(get_session)):
     return obtener_usuario_o_404(session, id_usuario)
 
 
-@router.put("/{id_usuario}", response_model=UsuarioRead)
+@router.put("/{id_usuario}", response_model=UsuarioRead, dependencies=PROTEGIDO)
 def actualizar_usuario(
     id_usuario: int, datos: UsuarioUpdate, session: Session = Depends(get_session)
 ):
@@ -80,7 +89,9 @@ def actualizar_usuario(
     return usuario
 
 
-@router.delete("/{id_usuario}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{id_usuario}", status_code=status.HTTP_204_NO_CONTENT, dependencies=PROTEGIDO
+)
 def eliminar_usuario(id_usuario: int, session: Session = Depends(get_session)):
     """Elimina un usuario y sus favoritos."""
     usuario = obtener_usuario_o_404(session, id_usuario)
@@ -115,6 +126,7 @@ def listar_favoritos_usuario(
     "/{id_usuario}/favoritos/{id_cancion}",
     response_model=FavoritoRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=PROTEGIDO,
 )
 def marcar_favorito_usuario(
     id_usuario: int, id_cancion: int, session: Session = Depends(get_session)
@@ -138,7 +150,9 @@ def marcar_favorito_usuario(
 
 
 @router.delete(
-    "/{id_usuario}/favoritos/{id_cancion}", status_code=status.HTTP_204_NO_CONTENT
+    "/{id_usuario}/favoritos/{id_cancion}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=PROTEGIDO,
 )
 def eliminar_favorito_usuario(
     id_usuario: int, id_cancion: int, session: Session = Depends(get_session)
