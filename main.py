@@ -72,7 +72,15 @@ async def root():
     Retorna información básica y enlaces a la documentación.
     """
     return {
-        # TODO: Agregar información 
+        "nombre": settings.app_name,
+        "version": settings.app_version,
+        "entorno": settings.environment,
+        "documentacion": {"swagger": "/docs", "redoc": "/redoc"},
+        "endpoints": {
+            "usuarios": "/api/usuarios",
+            "canciones": "/api/canciones",
+            "favoritos": "/api/favoritos",
+        },
     }
 
 
