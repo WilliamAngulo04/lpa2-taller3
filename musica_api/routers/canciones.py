@@ -11,6 +11,7 @@ from musica_api.models import (
     CancionUpdate,
     Favorito,
 )
+from musica_api.paginacion import Pagina, ParametrosPaginacion, paginar
 
 router = APIRouter()
 
@@ -22,29 +23,33 @@ def obtener_cancion_o_404(session: Session, id_cancion: int) -> Cancion:
     return cancion
 
 
-@router.get("", response_model=list[CancionRead])
-def listar_canciones(session: Session = Depends(get_session)):
-    """Lista todas las canciones."""
-    return session.exec(select(Cancion)).all()
+@router.get("", response_model=Pagina[CancionRead])
+def listar_canciones(
+    params: ParametrosPaginacion = Depends(),
+    session: Session = Depends(get_session),
+):
+    """Lista las canciones de forma paginada."""
+    return paginar(session, select(Cancion).order_by(Cancion.id), params)
 
 
 # Debe declararse antes de /{id_cancion} para que "buscar" no se tome como ID
-@router.get("/buscar", response_model=list[CancionRead])
+@router.get("/buscar", response_model=Pagina[CancionRead])
 def buscar_canciones(
     titulo: str | None = None,
     artista: str | None = None,
     genero: str | None = None,
+    params: ParametrosPaginacion = Depends(),
     session: Session = Depends(get_session),
 ):
     """Busca canciones por título, artista y/o género (coincidencia parcial)."""
-    consulta = select(Cancion)
+    consulta = select(Cancion).order_by(Cancion.id)
     if titulo:
         consulta = consulta.where(col(Cancion.titulo).ilike(f"%{titulo}%"))
     if artista:
         consulta = consulta.where(col(Cancion.artista).ilike(f"%{artista}%"))
     if genero:
         consulta = consulta.where(col(Cancion.genero).ilike(f"%{genero}%"))
-    return session.exec(consulta).all()
+    return paginar(session, consulta, params)
 
 
 @router.post("", response_model=CancionRead, status_code=status.HTTP_201_CREATED)

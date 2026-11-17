@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_file: str | None = "musica_api.log"
 
+    # Configuración de paginación
+    page_size_default: int = 10
+    page_size_max: int = 100
+
     @field_validator("environment", mode="before")
     @classmethod
     def normalizar_environment(cls, v: str) -> str:

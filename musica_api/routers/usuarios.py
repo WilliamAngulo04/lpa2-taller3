@@ -14,6 +14,7 @@ from musica_api.models import (
     UsuarioRead,
     UsuarioUpdate,
 )
+from musica_api.paginacion import Pagina, ParametrosPaginacion, paginar
 
 router = APIRouter()
 
@@ -33,10 +34,13 @@ def verificar_correo_disponible(
         raise HTTPException(status.HTTP_409_CONFLICT, "El correo ya está registrado")
 
 
-@router.get("", response_model=list[UsuarioRead])
-def listar_usuarios(session: Session = Depends(get_session)):
-    """Lista todos los usuarios."""
-    return session.exec(select(Usuario)).all()
+@router.get("", response_model=Pagina[UsuarioRead])
+def listar_usuarios(
+    params: ParametrosPaginacion = Depends(),
+    session: Session = Depends(get_session),
+):
+    """Lista los usuarios de forma paginada."""
+    return paginar(session, select(Usuario).order_by(Usuario.id), params)
 
 
 @router.post("", response_model=UsuarioRead, status_code=status.HTTP_201_CREATED)
@@ -88,11 +92,18 @@ def eliminar_usuario(id_usuario: int, session: Session = Depends(get_session)):
 # -----------------------------------------------------------------------------
 
 
-@router.get("/{id_usuario}/favoritos", response_model=list[FavoritoRead])
-def listar_favoritos_usuario(id_usuario: int, session: Session = Depends(get_session)):
-    """Lista los favoritos de un usuario."""
+@router.get("/{id_usuario}/favoritos", response_model=Pagina[FavoritoRead])
+def listar_favoritos_usuario(
+    id_usuario: int,
+    params: ParametrosPaginacion = Depends(),
+    session: Session = Depends(get_session),
+):
+    """Lista los favoritos de un usuario de forma paginada."""
     obtener_usuario_o_404(session, id_usuario)
-    return session.exec(select(Favorito).where(Favorito.id_usuario == id_usuario)).all()
+    consulta = (
+        select(Favorito).where(Favorito.id_usuario == id_usuario).order_by(Favorito.id)
+    )
+    return paginar(session, consulta, params)
 
 
 @router.post(

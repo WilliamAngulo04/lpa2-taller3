@@ -6,14 +6,18 @@ from sqlmodel import Session, select
 
 from musica_api.database import get_session
 from musica_api.models import Cancion, Favorito, FavoritoCreate, FavoritoRead, Usuario
+from musica_api.paginacion import Pagina, ParametrosPaginacion, paginar
 
 router = APIRouter()
 
 
-@router.get("", response_model=list[FavoritoRead])
-def listar_favoritos(session: Session = Depends(get_session)):
-    """Lista todos los favoritos."""
-    return session.exec(select(Favorito)).all()
+@router.get("", response_model=Pagina[FavoritoRead])
+def listar_favoritos(
+    params: ParametrosPaginacion = Depends(),
+    session: Session = Depends(get_session),
+):
+    """Lista los favoritos de forma paginada."""
+    return paginar(session, select(Favorito).order_by(Favorito.id), params)
 
 
 @router.post("", response_model=FavoritoRead, status_code=status.HTTP_201_CREATED)

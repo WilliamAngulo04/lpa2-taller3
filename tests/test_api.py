@@ -101,7 +101,7 @@ class TestUsuarios:
         """Test para GET /api/usuarios"""
         response = client.get("/api/usuarios")
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()["items"]
         assert len(data) == 1
         assert data[0]["correo"] == usuario_test.correo
 
@@ -178,7 +178,7 @@ class TestCanciones:
         """Test para GET /api/canciones"""
         response = client.get("/api/canciones")
         assert response.status_code == 200
-        assert len(response.json()) == 1
+        assert len(response.json()["items"]) == 1
 
     def test_crear_cancion(self, client: TestClient):
         """Test para POST /api/canciones"""
@@ -230,12 +230,12 @@ class TestCanciones:
         """Test para GET /api/canciones/buscar"""
         response = client.get("/api/canciones/buscar", params={"titulo": "test"})
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()["items"]
         assert len(data) == 1
         assert data[0]["id"] == cancion_test.id
 
         response = client.get("/api/canciones/buscar", params={"titulo": "nada"})
-        assert response.json() == []
+        assert response.json()["items"] == []
 
     def test_buscar_canciones_multiples_filtros(self, client: TestClient):
         """Test para búsqueda con múltiples parámetros"""
@@ -260,9 +260,61 @@ class TestCanciones:
             "/api/canciones/buscar", params={"artista": "shakira", "genero": "rock"}
         )
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()["items"]
         assert len(data) == 1
         assert data[0]["titulo"] == "Song B"
+
+
+# =============================================================================
+# TESTS DE PAGINACIÓN
+# =============================================================================
+
+
+class TestPaginacion:
+    """Tests para la paginación de los listados (mejora)."""
+
+    @pytest.fixture(autouse=True)
+    def crear_canciones(self, session: Session):
+        for i in range(1, 26):
+            session.add(
+                Cancion(
+                    titulo=f"Canción {i}",
+                    artista="Artista",
+                    duracion=100 + i,
+                    año=2000,
+                    genero="Pop",
+                )
+            )
+        session.commit()
+
+    def test_pagina_por_defecto(self, client: TestClient):
+        data = client.get("/api/canciones").json()
+        assert data["total"] == 25
+        assert data["pagina"] == 1
+        assert data["tamaño"] == 10
+        assert data["paginas"] == 3
+        assert len(data["items"]) == 10
+        assert data["items"][0]["titulo"] == "Canción 1"
+
+    def test_ultima_pagina(self, client: TestClient):
+        data = client.get("/api/canciones", params={"pagina": 3, "tamaño": 10}).json()
+        assert len(data["items"]) == 5
+        assert data["items"][-1]["titulo"] == "Canción 25"
+
+    def test_pagina_fuera_de_rango(self, client: TestClient):
+        data = client.get("/api/canciones", params={"pagina": 10}).json()
+        assert data["items"] == []
+        assert data["total"] == 25
+
+    def test_busqueda_paginada(self, client: TestClient):
+        params = {"artista": "artista", "pagina": 2, "tamaño": 20}
+        data = client.get("/api/canciones/buscar", params=params).json()
+        assert data["total"] == 25
+        assert len(data["items"]) == 5
+
+    @pytest.mark.parametrize("params", [{"pagina": 0}, {"tamaño": 0}, {"tamaño": 101}])
+    def test_parametros_invalidos(self, client: TestClient, params: dict):
+        assert client.get("/api/canciones", params=params).status_code == 422
 
 
 # =============================================================================
@@ -277,7 +329,7 @@ class TestFavoritos:
         """Test para GET /api/favoritos"""
         response = client.get("/api/favoritos")
         assert response.status_code == 200
-        assert response.json() == []
+        assert response.json()["items"] == []
 
     def test_crear_favorito(
         self, client: TestClient, usuario_test: Usuario, cancion_test: Cancion
@@ -371,7 +423,7 @@ class TestFavoritos:
         session.commit()
         response = client.get(f"/api/usuarios/{usuario_test.id}/favoritos")
         assert response.status_code == 200
-        data = response.json()
+        data = response.json()["items"]
         assert len(data) == 1
         assert data[0]["id_cancion"] == cancion_test.id
 
@@ -381,7 +433,7 @@ class TestFavoritos:
         """Al eliminar una canción se eliminan sus favoritos"""
         client.post(f"/api/usuarios/{usuario_test.id}/favoritos/{cancion_test.id}")
         client.delete(f"/api/canciones/{cancion_test.id}")
-        assert client.get("/api/favoritos").json() == []
+        assert client.get("/api/favoritos").json()["items"] == []
 
 
 # =============================================================================
@@ -418,7 +470,8 @@ class TestIntegracion:
         assert response.status_code == 201
 
         # 4. Verificar que aparece en favoritos del usuario
-        favoritos = client.get(f"/api/usuarios/{usuario['id']}/favoritos").json()
+        url = f"/api/usuarios/{usuario['id']}/favoritos"
+        favoritos = client.get(url).json()["items"]
         assert [f["id_cancion"] for f in favoritos] == [cancion["id"]]
 
     def test_root_y_health(self, client: TestClient):
