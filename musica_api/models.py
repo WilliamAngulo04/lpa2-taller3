@@ -7,13 +7,18 @@ Cada entidad tiene:
 - modelos para crear, actualizar y leer (esquemas de entrada/salida).
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from pydantic import field_validator
 from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 from utils import obtener_año_actual, validar_año, validar_correo
+
+
+def ahora() -> datetime:
+    """Fecha y hora actual en UTC (SQLModel exige fechas con zona horaria)."""
+    return datetime.now(UTC)
 
 # =============================================================================
 # USUARIO
@@ -43,7 +48,7 @@ class UsuarioBase(SQLModel):
 
 class Usuario(UsuarioBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    fecha_registro: datetime = Field(default_factory=datetime.now)
+    fecha_registro: datetime = Field(default_factory=ahora)
 
 
 class UsuarioCreate(UsuarioBase):
@@ -97,7 +102,7 @@ class CancionBase(SQLModel):
 
 class Cancion(CancionBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    fecha_creacion: datetime = Field(default_factory=datetime.now)
+    fecha_creacion: datetime = Field(default_factory=ahora)
 
 
 class CancionCreate(CancionBase):
@@ -139,7 +144,7 @@ class Favorito(FavoritoBase, table=True):
     )
 
     id: int | None = Field(default=None, primary_key=True)
-    fecha_marcado: datetime = Field(default_factory=datetime.now)
+    fecha_marcado: datetime = Field(default_factory=ahora)
 
 
 class FavoritoCreate(FavoritoBase):
