@@ -1,5 +1,16 @@
 # API de Música
 
+[![CI](https://github.com/rhaulh/lpa2-taller3/actions/workflows/ci.yml/badge.svg)](https://github.com/rhaulh/lpa2-taller3/actions/workflows/ci.yml)
+
+## Datos del Estudiante
+
+| Campo       | Valor                          |
+|-------------|--------------------------------|
+| Nombre      | _(tu nombre completo)_         |
+| Código      | _(tu código estudiantil)_      |
+| Usuario Git | [rhaulh](https://github.com/rhaulh) |
+| Curso       | Lenguajes de Programación Avanzada 2 (LPA2) |
+
 Una [API RESTful](https://aws.amazon.com/es/what-is/restful-api/) para gestionar usuarios, canciones y favoritos. Desarrollada con [FastAPI](https://fastapi.tiangolo.com/), [SQLModel](https://sqlmodel.tiangolo.com/) y [Pydantic](https://docs.pydantic.dev/).
 
 ## Descripción
@@ -15,19 +26,30 @@ El proyecto incluye una interfaz de documentación interactiva generada automát
 
 ```
 lpa2-taller3
-├──  README.md            # Este archivo, documentación completa del proyecto
-├──  .env                 # Variables de entorno (desarrollo, pruebas, producción)
-├──  .gitignore           # Archivos y directorios a ignorar por Git
-├──  main.py              # Script principal para ejecutar la aplicación
-├──  musica.db            # Base de Datos
-├──  musica_api
-│   ├──  __init__.py      # Inicialización del módulo
-│   └──  *                # Implementación del API
-├── 󰌠 requirements.txt     # Dependencias del proyecto
-├── 󰙨 tests
-│   └──  test_api.py      # Pruebas Unitarias
-└──  utils.py             # Funciones de utilidad
-
+├── README.md                 # Este archivo, documentación completa del proyecto
+├── .env                      # Variables de entorno (copiar desde .env.example)
+├── .env.example              # Plantilla de variables de entorno
+├── .gitignore                # Archivos y directorios a ignorar por Git
+├── .pre-commit-config.yaml   # Hooks de pre-commit (ruff + pytest)
+├── .github/workflows/ci.yml  # GitHub Actions: ruff + pytest
+├── main.py                   # Script principal para ejecutar la aplicación
+├── musica.db                 # Base de Datos
+├── musica_api
+│   ├── __init__.py           # Inicialización del módulo
+│   ├── config.py             # Configuración por entorno (Pydantic Settings)
+│   ├── database.py           # Engine, creación de tablas y sesión
+│   ├── models.py             # Modelos SQLModel y esquemas con validación
+│   ├── paginacion.py         # Mejora: paginación de listados
+│   ├── logging_config.py     # Mejora: sistema de registro (logging)
+│   └── routers               # Endpoints: usuarios, canciones, favoritos
+├── pyproject.toml            # Configuración de pytest y ruff
+├── requirements.txt          # Dependencias del proyecto
+├── scripts
+│   └── datos_iniciales.sql   # 5 usuarios y 10 canciones para DBeaver
+├── tests
+│   ├── test_api.py           # Pruebas de la API
+│   └── test_utils.py         # Pruebas de utilidades
+└── utils.py                  # Funciones de utilidad
 ```
 ## Modelo de Datos
 
@@ -66,7 +88,8 @@ lpa2-taller3
 
    ```bash
    python -m venv venv
-   source venv/bin/activate
+   source venv/bin/activate      # Linux / macOS
+   venv\Scripts\activate         # Windows
    ```
 
 3. Instala las dependencias:
@@ -75,7 +98,13 @@ lpa2-taller3
    pip install -r requirements.txt
    ```
 
-4. Ajusta las variables de entorno, editando el archivo `.env`
+4. Ajusta las variables de entorno, copiando `.env.example` a `.env` y editándolo
+
+5. Instala los hooks de pre-commit:
+
+   ```bash
+   pre-commit install
+   ```
 
 ## Ejecución
 
@@ -90,7 +119,21 @@ lpa2-taller3
    - Documentación *Swagger UI*: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
    - Documentación *ReDoc*: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
+## Pruebas y calidad de código
+
+```bash
+pytest                       # pruebas automatizadas
+ruff check .                 # linter
+ruff format .                # formatter
+pre-commit run --all-files   # todos los hooks
+```
+
+En cada `push` y `pull request` a `main`, GitHub Actions ejecuta ruff y pytest.
+
 ## Uso de la API
+
+> Los listados (`GET` de colecciones y búsqueda) son **paginados**: aceptan
+> `?pagina=1&tamaño=10` y responden con `total`, `pagina`, `tamaño`, `paginas` e `items`.
 
 ### Usuarios
 
@@ -134,6 +177,24 @@ lpa2-taller3
 6. Desarrolla las pruebas automatizadas para verificar el funcionamiento correcto de la API.
 
 7. Implementar dos (2) de las sugerencias que se presentan a continuación.
+
+## Mejoras Implementadas
+
+### 1. Paginación (sugerencia 2)
+
+- Módulo [`musica_api/paginacion.py`](musica_api/paginacion.py) con la dependencia `ParametrosPaginacion` y el modelo genérico `Pagina[T]`.
+- Aplicada a: `/api/usuarios`, `/api/canciones`, `/api/canciones/buscar`, `/api/favoritos` y `/api/usuarios/{id}/favoritos`.
+- Usa `OFFSET`/`LIMIT` en SQL (no carga toda la tabla en memoria) y un `COUNT` para el total.
+- Tamaño por defecto y máximo configurables (`PAGE_SIZE_DEFAULT`, `PAGE_SIZE_MAX`).
+
+### 2. Registro / logging (sugerencia 5)
+
+- Módulo [`musica_api/logging_config.py`](musica_api/logging_config.py): salida a consola y a archivo con rotación (1 MB × 5 archivos).
+- Middleware que registra cada request: método, ruta, código de estado, duración y cliente; agrega el encabezado `X-Process-Time-Ms`.
+- Nivel según el resultado: `INFO` (2xx/3xx), `WARNING` (4xx), `ERROR` (5xx).
+- Manejadores de errores que registran la traza completa sin exponerla al cliente.
+- Eventos de negocio (creación/eliminación de usuarios, canciones y favoritos).
+- Configurable con `LOG_LEVEL` y `LOG_FILE`.
 
 ## Sugerencias de Mejora
 
