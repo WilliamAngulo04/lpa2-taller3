@@ -42,17 +42,21 @@ def generar_slug(texto):
     Returns:
         str: Slug generado
     """
-    # TODO: Convertir a minúsculas
-    slug = texto
-    
-    # TODO: Reemplazar espacios con guiones
-    
-    # TODO: Eliminar caracteres no alfanuméricos (excepto guiones)
-    
-    # TODO: Reemplazar múltiples guiones con uno solo
-    
-    # TODO: Eliminar guiones al inicio y final
-    
+    # Convertir a minúsculas
+    slug = texto.lower()
+
+    # Reemplazar espacios con guiones
+    slug = re.sub(r"\s+", "-", slug)
+
+    # Eliminar caracteres no alfanuméricos (excepto guiones)
+    slug = re.sub(r"[^a-z0-9-]", "", slug)
+
+    # Reemplazar múltiples guiones con uno solo
+    slug = re.sub(r"-+", "-", slug)
+
+    # Eliminar guiones al inicio y final
+    slug = slug.strip("-")
+
     return slug
 
 def obtener_año_actual():
