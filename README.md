@@ -1,6 +1,6 @@
 # API de Música
 
-[![CI](https://github.com/rhaulh/lpa2-taller3/actions/workflows/ci.yml/badge.svg)](https://github.com/rhaulh/lpa2-taller3/actions/workflows/ci.yml)
+[![CI](https://github.com/WilliamAngulo04/lpa2-taller3/actions/workflows/ci.yml/badge.svg)](https://github.com/WilliamAngulo04/lpa2-taller3/actions/workflows/ci.yml)
 
 ## Datos del Estudiante
 
@@ -8,7 +8,7 @@
 |-------------|--------------------------------|
 | Nombre      | _(tu nombre completo)_         |
 | Código      | _(tu código estudiantil)_      |
-| Usuario Git | [rhaulh](https://github.com/rhaulh) |
+| Usuario Git | [WilliamAngulo04](https://github.com/WilliamAngulo04) |
 | Curso       | Lenguajes de Programación Avanzada 2 (LPA2) |
 
 Una [API RESTful](https://aws.amazon.com/es/what-is/restful-api/) para gestionar usuarios, canciones y favoritos. Desarrollada con [FastAPI](https://fastapi.tiangolo.com/), [SQLModel](https://sqlmodel.tiangolo.com/) y [Pydantic](https://docs.pydantic.dev/).
@@ -80,7 +80,7 @@ lpa2-taller3
 1. Clona este repositorio:
 
    ```bash
-   git clone https://github.com/UR-CC/lpa2-taller3.git
+   git clone https://github.com/WilliamAngulo04/lpa2-taller3.git
    cd lpa2-taller3
    ```
 
