@@ -1,3 +1,4 @@
+import platform
 import time
 from contextlib import asynccontextmanager
 
@@ -80,10 +81,14 @@ async def health_check():
     Health check endpoint para verificar el estado de la API.
     Útil para sistemas de monitoreo y orquestación.
     """
+    db_ok = check_db_connection()
     return {
-        "status": "healthy",
-        # TODO: Agregar verificación de conexión a base de datos
-        # TODO: Agregar información sobre el sistema (uptime, memoria, etc.)
+        "status": "healthy" if db_ok else "unhealthy",
+        "database": "conectada" if db_ok else "sin conexión",
+        "uptime_segundos": round(time.time() - INICIO, 2),
+        "version": settings.app_version,
+        "python": platform.python_version(),
+        "sistema": platform.system(),
     }
 
 
