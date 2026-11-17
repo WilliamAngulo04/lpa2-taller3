@@ -33,8 +33,14 @@ app = FastAPI(
     version=settings.app_version,
     debug=settings.debug,
     lifespan=lifespan,
-    # TODO: Agregar información de contacto y licencia
-
+    contact={
+        "name": "Equipo API de Música",
+        "url": "https://github.com/UR-CC/lpa2-taller3",
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT",
+    },
 )
 
 
