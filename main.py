@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     # Startup: Crear tablas en la base de datos
     create_db_and_tables()
     yield
-    
+
     # Shutdown: Limpiar recursos si es necesario
     print("cerrando aplicación...")
 
@@ -116,12 +116,10 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "main:app",
         host=settings.host,
         port=settings.port,
         reload=settings.debug,
     )
-
-

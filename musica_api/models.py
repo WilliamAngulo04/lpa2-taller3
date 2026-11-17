@@ -20,6 +20,7 @@ def ahora() -> datetime:
     """Fecha y hora actual en UTC (SQLModel exige fechas con zona horaria)."""
     return datetime.now(UTC)
 
+
 # =============================================================================
 # USUARIO
 # =============================================================================
@@ -154,4 +155,3 @@ class FavoritoCreate(FavoritoBase):
 class FavoritoRead(FavoritoBase):
     id: int
     fecha_marcado: datetime
-
