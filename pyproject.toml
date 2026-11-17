@@ -1,0 +1,25 @@
+[project]
+name = "lpa2-taller3"
+version = "1.0.0"
+description = "API RESTful para gestionar usuarios, canciones y favoritos"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+extend-exclude = ["venv"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: isort, B: bugbear, UP: pyupgrade
+select = ["E", "W", "F", "I", "B", "UP"]
+# B008: FastAPI usa Depends() en los argumentos por defecto
+ignore = ["B008"]
+
+[tool.ruff.format]
+quote-style = "double"
