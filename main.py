@@ -1,3 +1,4 @@
+import logging
 import platform
 import time
 from contextlib import asynccontextmanager
@@ -9,9 +10,13 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from musica_api.config import settings
 from musica_api.database import check_db_connection, create_db_and_tables
+from musica_api.logging_config import get_logger, setup_logging
 from musica_api.routers import canciones, favoritos, usuarios
 
 INICIO = time.time()
+
+setup_logging(settings)
+logger = get_logger("main")
 
 
 @asynccontextmanager
@@ -21,11 +26,18 @@ async def lifespan(app: FastAPI):
     Se ejecuta al iniciar y al cerrar la aplicación.
     """
     # Startup: Crear tablas en la base de datos
+    logger.info(
+        "Iniciando %s v%s (entorno: %s)",
+        settings.app_name,
+        settings.app_version,
+        settings.environment,
+    )
     create_db_and_tables()
+    logger.info("Base de datos lista: %s", settings.database_url)
     yield
 
     # Shutdown: Limpiar recursos si es necesario
-    print("cerrando aplicación...")
+    logger.info("Cerrando aplicación...")
 
 
 # Crear la instancia de FastAPI con metadatos apropiados
@@ -102,15 +114,50 @@ async def health_check():
     }
 
 
-# TODO: Opcional - Agregar middleware para logging de requests
+# Middleware para logging de requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Registra método, ruta, código de estado y tiempo de cada request."""
+    inicio = time.perf_counter()
+    response = await call_next(request)
+    duracion_ms = (time.perf_counter() - inicio) * 1000
+    cliente = request.client.host if request.client else "-"
+    nivel = (
+        logging.ERROR
+        if response.status_code >= 500
+        else logging.WARNING
+        if response.status_code >= 400
+        else logging.INFO
+    )
+    logger.log(
+        nivel,
+        "%s %s -> %d (%.1f ms) [%s]",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duracion_ms,
+        cliente,
+    )
+    response.headers["X-Process-Time-Ms"] = f"{duracion_ms:.1f}"
+    return response
 
 
 # Manejadores de errores personalizados
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+    logger.exception("Error de base de datos en %s %s", request.method, request.url)
     return JSONResponse(
         status_code=500,
         content={"detail": "Error interno de base de datos"},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Error no controlado en %s %s", request.method, request.url)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Error interno del servidor"},
     )
 
 

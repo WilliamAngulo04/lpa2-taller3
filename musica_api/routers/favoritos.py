@@ -5,10 +5,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from musica_api.database import get_session
+from musica_api.logging_config import get_logger
 from musica_api.models import Cancion, Favorito, FavoritoCreate, FavoritoRead, Usuario
 from musica_api.paginacion import Pagina, ParametrosPaginacion, paginar
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.get("", response_model=Pagina[FavoritoRead])
@@ -37,6 +39,7 @@ def crear_favorito(datos: FavoritoCreate, session: Session = Depends(get_session
             status.HTTP_409_CONFLICT, "La canción ya está en favoritos"
         ) from None
     session.refresh(favorito)
+    logger.info("Favorito creado: id=%s", favorito.id)
     return favorito
 
 
@@ -57,3 +60,4 @@ def eliminar_favorito(id_favorito: int, session: Session = Depends(get_session))
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Favorito no encontrado")
     session.delete(favorito)
     session.commit()
+    logger.info("Favorito eliminado: id=%s", id_favorito)

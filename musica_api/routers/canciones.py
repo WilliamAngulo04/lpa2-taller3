@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, col, select
 
 from musica_api.database import get_session
+from musica_api.logging_config import get_logger
 from musica_api.models import (
     Cancion,
     CancionCreate,
@@ -14,6 +15,7 @@ from musica_api.models import (
 from musica_api.paginacion import Pagina, ParametrosPaginacion, paginar
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 def obtener_cancion_o_404(session: Session, id_cancion: int) -> Cancion:
@@ -59,6 +61,7 @@ def crear_cancion(datos: CancionCreate, session: Session = Depends(get_session))
     session.add(cancion)
     session.commit()
     session.refresh(cancion)
+    logger.info("Canción creada: id=%s titulo=%s", cancion.id, cancion.titulo)
     return cancion
 
 
@@ -90,3 +93,4 @@ def eliminar_cancion(id_cancion: int, session: Session = Depends(get_session)):
         session.delete(favorito)
     session.delete(cancion)
     session.commit()
+    logger.info("Canción eliminada: id=%s", id_cancion)

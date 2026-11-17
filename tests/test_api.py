@@ -3,6 +3,8 @@ Tests para la API de Música.
 Pruebas unitarias y de integración usando pytest.
 """
 
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
@@ -529,3 +531,35 @@ class TestValidacion:
         assert response.status_code == 422
         campos = {e["loc"][-1] for e in response.json()["detail"]}
         assert {"artista", "duracion", "año", "genero"} <= campos
+
+
+# =============================================================================
+# TESTS DE LOGGING
+# =============================================================================
+
+
+class TestLogging:
+    """Tests para el sistema de registro (mejora)."""
+
+    @pytest.fixture(autouse=True)
+    def capturar_logs(self, caplog: pytest.LogCaptureFixture):
+        # El logger de la app no propaga a root; se habilita para caplog
+        logger = logging.getLogger("musica_api")
+        logger.propagate = True
+        caplog.set_level(logging.INFO, logger="musica_api")
+        yield
+        logger.propagate = False
+
+    def test_registra_requests(self, client: TestClient, caplog):
+        response = client.get("/api/usuarios")
+        assert "X-Process-Time-Ms" in response.headers
+        assert any("GET /api/usuarios -> 200" in r.message for r in caplog.records)
+
+    def test_registra_errores_como_warning(self, client: TestClient, caplog):
+        client.get("/api/usuarios/999")
+        registro = next(r for r in caplog.records if "/api/usuarios/999" in r.message)
+        assert registro.levelno == logging.WARNING
+
+    def test_registra_eventos(self, client: TestClient, caplog):
+        client.post("/api/usuarios", json={"nombre": "Log", "correo": "log@x.com"})
+        assert any("Usuario creado" in r.message for r in caplog.records)

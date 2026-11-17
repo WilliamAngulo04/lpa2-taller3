@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from musica_api.database import get_session
+from musica_api.logging_config import get_logger
 from musica_api.models import (
     Cancion,
     Favorito,
@@ -17,6 +18,7 @@ from musica_api.models import (
 from musica_api.paginacion import Pagina, ParametrosPaginacion, paginar
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 def obtener_usuario_o_404(session: Session, id_usuario: int) -> Usuario:
@@ -31,6 +33,7 @@ def verificar_correo_disponible(
 ) -> None:
     existente = session.exec(select(Usuario).where(Usuario.correo == correo)).first()
     if existente and existente.id != excluir_id:
+        logger.warning("Correo duplicado: %s", correo)
         raise HTTPException(status.HTTP_409_CONFLICT, "El correo ya está registrado")
 
 
@@ -51,6 +54,7 @@ def crear_usuario(datos: UsuarioCreate, session: Session = Depends(get_session))
     session.add(usuario)
     session.commit()
     session.refresh(usuario)
+    logger.info("Usuario creado: id=%s correo=%s", usuario.id, usuario.correo)
     return usuario
 
 
@@ -85,6 +89,7 @@ def eliminar_usuario(id_usuario: int, session: Session = Depends(get_session)):
         session.delete(favorito)
     session.delete(usuario)
     session.commit()
+    logger.info("Usuario eliminado: id=%s", id_usuario)
 
 
 # -----------------------------------------------------------------------------
@@ -128,6 +133,7 @@ def marcar_favorito_usuario(
             status.HTTP_409_CONFLICT, "La canción ya está en favoritos"
         ) from None
     session.refresh(favorito)
+    logger.info("Favorito marcado: usuario=%s cancion=%s", id_usuario, id_cancion)
     return favorito
 
 

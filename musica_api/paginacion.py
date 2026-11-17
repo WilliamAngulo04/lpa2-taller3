@@ -6,7 +6,6 @@ responden con un objeto `Pagina` que incluye el total de registros.
 """
 
 import math
-from typing import TypeVar
 
 from fastapi import Query
 from pydantic import BaseModel
@@ -14,8 +13,6 @@ from sqlmodel import Session, func, select
 from sqlmodel.sql.expression import SelectOfScalar
 
 from musica_api.config import settings
-
-T = TypeVar("T")
 
 
 class Pagina[T](BaseModel):
