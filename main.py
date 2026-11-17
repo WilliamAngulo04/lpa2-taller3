@@ -1,11 +1,14 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import time
 from contextlib import asynccontextmanager
 
-from app.database import create_db_and_tables
-from app.routers import usuarios, peliculas, favoritos
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-# TODO: Importar la configuración desde app.config
+from musica_api.config import settings
+from musica_api.database import check_db_connection, create_db_and_tables
+from musica_api.routers import canciones, favoritos, usuarios
+
+INICIO = time.time()
 
 
 @asynccontextmanager
@@ -25,9 +28,10 @@ async def lifespan(app: FastAPI):
 # Crear la instancia de FastAPI con metadatos apropiados
 # Incluir: title, description, version, contact, license_info
 app = FastAPI(
-    title="API de Películas",
-    description="API RESTful para gestionar usuarios, películas y favoritos",
-    version="1.0.0",
+    title=settings.app_name,
+    description="API RESTful para gestionar usuarios, canciones y favoritos",
+    version=settings.app_version,
+    debug=settings.debug,
     lifespan=lifespan,
     # TODO: Agregar información de contacto y licencia
 
@@ -38,7 +42,7 @@ app = FastAPI(
 # Esto es importante para desarrollo con frontend separado
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar orígenes permitidos
+    allow_origins=settings.cors_origins,  # En producción, orígenes permitidos
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
