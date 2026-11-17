@@ -2,8 +2,10 @@ import platform
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 
 from musica_api.config import settings
 from musica_api.database import check_db_connection, create_db_and_tables
@@ -95,7 +97,13 @@ async def health_check():
 # TODO: Opcional - Agregar middleware para logging de requests
 
 
-# TODO: Opcional - Agregar manejadores de errores personalizados
+# Manejadores de errores personalizados
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Error interno de base de datos"},
+    )
 
 
 if __name__ == "__main__":
